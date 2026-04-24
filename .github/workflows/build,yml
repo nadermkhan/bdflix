@@ -1,0 +1,72 @@
+name: Build and Release BDFlix by Nader Mahbub Khan
+
+on:
+  push:
+    branches: [ "main" ] 
+  workflow_dispatch:    
+
+permissions:
+  contents: write     
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v3
+
+    - name: Restore NuGet Packages
+      # Make sure the solution name matches your actual .sln file name
+      run: nuget restore BDFlix.sln 
+
+    - name: Build Project
+      # Compiles the solution in Release mode for 64-bit architecture
+      # You can add /p:WindowsAppSDKSelfContained=true if you want a self-contained unpackaged app
+      run: msbuild BDFlix.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Generate Timestamp and Rename Artifact
+      id: prepare_artifact
+      shell: pwsh
+      run: |
+        # Generate the DDMMYYHHMMSS timestamp
+        $timestamp = Get-Date -Format "ddMMyyHHmmss"
+        $targetName = "BDFlix-$timestamp.exe"
+        $tagName = "v$timestamp"
+        
+        # Save variables to GitHub Environment for the next steps
+        echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
+        echo "TARGET_NAME=$targetName" >> $env:GITHUB_ENV
+        
+        # Locate the compiled BDFlix.exe 
+        # (It searches the Release directories recursively in case your output path differs)
+        $exeFile = Get-ChildItem -Path . -Filter "BDFlix.exe" -Recurse | Where-Object { $_.FullName -match "Release" } | Select-Object -First 1
+        
+        if ($exeFile) {
+            Write-Host "Found executable at: $($exeFile.FullName)"
+            $newPath = Join-Path -Path $exeFile.DirectoryName -ChildPath $targetName
+            Rename-Item -Path $exeFile.FullName -NewName $targetName
+            
+            # Save the exact path of the renamed file
+            echo "EXE_PATH=$newPath" >> $env:GITHUB_ENV
+        } else {
+            Write-Error "BDFlix.exe was not found. Check your build configuration."
+            exit 1
+        }
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.TAG_NAME }}
+        name: BDFlix Build ${{ env.TAG_NAME }}
+        files: ${{ env.EXE_PATH }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

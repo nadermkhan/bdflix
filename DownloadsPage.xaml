@@ -1,0 +1,120 @@
+<Page
+    x:Class="BDFlix.DownloadsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:BDFlix"
+    Background="{StaticResource AppBgBrush}">
+
+    <Page.Resources>
+        <!-- Download card template -->
+        <DataTemplate x:Key="DlItemTemplate"
+                      x:DataType="local:DlItemVM">
+            <Grid Margin="12,2"
+                  Background="{StaticResource CardBrush}"
+                  CornerRadius="12"
+                  MinHeight="76"
+                  Padding="16,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="44"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- State circle -->
+                <Border Grid.Column="0"
+                        Width="40" Height="40"
+                        CornerRadius="20"
+                        Background="{x:Bind StateColor}"
+                        VerticalAlignment="Top"
+                        Margin="0,4,0,0">
+                    <TextBlock Text="{x:Bind StateIcon}"
+                               Foreground="White"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- Info column -->
+                <StackPanel Grid.Column="1"
+                            Margin="12,0,0,0"
+                            Spacing="4">
+
+                    <!-- Filename -->
+                    <TextBlock Text="{x:Bind FileName}"
+                               Foreground="{StaticResource TextBrush}"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
+
+                    <!-- Progress bar (visible while active) -->
+                    <ProgressBar x:Name="DlProgress"
+                                 Value="{x:Bind Progress}"
+                                 Maximum="100"
+                                 Height="4"
+                                 CornerRadius="2"
+                                 Background="{StaticResource CardHoverBrush}"
+                                 Foreground="{x:Bind ProgressColor}"
+                                 Visibility="{x:Bind ShowProgress}"/>
+
+                    <!-- Status line -->
+                    <TextBlock Text="{x:Bind StatusLine}"
+                               Foreground="{x:Bind StatusColor}"
+                               FontSize="11"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <Style TargetType="ListViewItem"
+               x:Key="DlListViewItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Stretch"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid>
+        <!-- Empty state -->
+        <TextBlock x:Name="EmptyState"
+                   Text="No downloads yet"
+                   Foreground="{StaticResource Text3Brush}"
+                   FontSize="14"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Margin="0,80,0,0"/>
+
+        <ListView x:Name="DlList"
+                  ItemTemplate="{StaticResource DlItemTemplate}"
+                  ItemContainerStyle="{StaticResource DlListViewItem}"
+                  SelectionMode="Single"
+                  Background="Transparent"
+                  DoubleTapped="DlList_DoubleTapped"
+                  RightTapped="DlList_RightTapped"
+                  Padding="0,8,0,8"/>
+    </Grid>
+
+    <!-- Download context menu -->
+    <Page.ContextFlyout>
+        <MenuFlyout x:Name="DlContextMenu">
+            <MenuFlyoutItem x:Name="CtxPause"
+                            Text="Pause"
+                            Click="CtxPause_Click"/>
+            <MenuFlyoutItem x:Name="CtxResume"
+                            Text="Resume"
+                            Click="CtxResume_Click"/>
+            <MenuFlyoutItem x:Name="CtxCancel"
+                            Text="Cancel"
+                            Click="CtxCancel_Click"/>
+            <MenuFlyoutSeparator/>
+            <MenuFlyoutItem Text="Open Folder"
+                            Click="CtxOpenFolder_Click"/>
+            <MenuFlyoutItem x:Name="CtxRemove"
+                            Text="Remove"
+                            Click="CtxRemove_Click"/>
+        </MenuFlyout>
+    </Page.ContextFlyout>
+</Page>
