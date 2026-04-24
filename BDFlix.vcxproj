@@ -121,11 +121,26 @@
     <Image Include="Assets\StoreLogo.png" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="App.idl" />
-    <Midl Include="MainWindow.idl" />
-    <Midl Include="AboutPage.idl" />
-    <Midl Include="SearchPage.idl" />
-    <Midl Include="DownloadsPage.idl" />
+    <Midl Include="App.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>App.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="MainWindow.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="AboutPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>AboutPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="SearchPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>SearchPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="DownloadsPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>DownloadsPage.xaml</DependentUpon>
+    </Midl>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -170,7 +185,7 @@
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <ClCompile Include="DownloadManager.cpp" />
     <ClCompile Include="SearchEngine.cpp" />
     <ClCompile Include="App.xaml.cpp">
