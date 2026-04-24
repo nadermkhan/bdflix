@@ -56,6 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest"><Filter>Resource Files</Filter></AppxManifest>
+    <ApplicationManifest Include="app.manifest"><Filter>Resource Files</Filter></ApplicationManifest>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\SplashScreen.png"><Filter>Assets</Filter></Image>
