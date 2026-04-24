@@ -1,72 +1,277 @@
-name: Build and Release BDFlix by Nader Mahbub Khan
+name: CI
 
 on:
   push:
-    branches: [ "main" ] 
-  workflow_dispatch:    
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOLUTION_FILE: BDFlix.sln
+  PROJECT_DIR:   BDFlix
+  BUILD_CONFIG:  Release
+  BUILD_PLATFORM: x64
+
+# Required to allow the release job to publish to GitHub Releases
 permissions:
-  contents: write     
+  contents: write
+
 jobs:
-  build-and-release:
+  # ─────────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, x86, ARM64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for versioning
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+        with:
+          nuget-version: latest
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ${{ github.workspace }}/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.vcxproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore NuGet packages
+        run: nuget restore ${{ env.SOLUTION_FILE }}
+
+      - name: Add Windows App SDK workload
+        run: |
+          # Ensure Windows App SDK is available
+          dotnet workload install windowsappsdk
+        continue-on-error: true
+
+      - name: Build
+        run: |
+          msbuild ${{ env.SOLUTION_FILE }} `
+            /p:Configuration=Release `
+            /p:Platform=${{ matrix.platform }} `
+            /p:AppxBundle=Never `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /m `
+            /nologo `
+            /verbosity:minimal
+        env:
+          MSBUILDDISABLENODEREUSE: 1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BDFlix-${{ matrix.platform }}-build
+          path: |
+            ${{ env.PROJECT_DIR }}/bin/${{ matrix.platform }}/Release/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────
+  package:
+    name: Package (x64 MSIX)
+    runs-on: windows-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.vcxproj') }}
+
+      - name: Restore NuGet
+        run: nuget restore ${{ env.SOLUTION_FILE }}
+
+      - name: Generate self-signed cert for CI
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate `
+            -Subject "CN=BDFlix CI" `
+            -KeyAlgorithm RSA `
+            -KeyLength 2048 `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -Type CodeSigningCert `
+            -NotAfter (Get-Date).AddYears(1)
+
+          $pwd = ConvertTo-SecureString -String "bdflix123" -Force -AsPlainText
+          $pfxPath = "${{ github.workspace }}\BDFlixCI.pfx"
+          Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pwd
+
+          # Save thumbprint for later steps
+          echo "CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+          echo "PFX_PATH=$pfxPath" >> $env:GITHUB_ENV
+
+      - name: Compute version from git
+        shell: pwsh
+        run: |
+          $tag = git describe --tags --abbrev=0 2>$null
+          if (-not $tag) { $tag = "v0.0.0" }
+          $version = $tag.TrimStart('v')
+          $parts   = $version.Split('.')
+          $major   = if ($parts.Count -gt 0) { $parts[0] } else { "0" }
+          $minor   = if ($parts.Count -gt 1) { $parts[1] } else { "0" }
+          $patch   = if ($parts.Count -gt 2) { $parts[2] } else { "0" }
+          $build   = "${{ github.run_number }}"
+          $full    = "$major.$minor.$patch.$build"
+          echo "APP_VERSION=$full" >> $env:GITHUB_ENV
+          Write-Host "Version: $full"
+
+      - name: Build MSIX package
+        run: |
+          msbuild ${{ env.SOLUTION_FILE }} `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:AppxBundle=Never `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /p:AppxPackageSigningEnabled=true `
+            /p:PackageCertificateThumbprint="${{ env.CERT_THUMBPRINT }}" `
+            /p:PackageCertificateKeyFile="${{ env.PFX_PATH }}" `
+            /p:PackageCertificatePassword="bdflix123" `
+            /p:AppxPackageDir="${{ github.workspace }}\AppPackages\" `
+            /p:Version="${{ env.APP_VERSION }}" `
+            /m /nologo /verbosity:minimal
+        env:
+          MSBUILDDISABLENODEREUSE: 1
+
+      - name: Upload MSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BDFlix-MSIX-${{ env.APP_VERSION }}
+          path: AppPackages/
+          retention-days: 14
+
+  # ─────────────────────────────────────────────
+  lint:
+    name: Static Analysis
     runs-on: windows-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+      - name: Run clang-tidy (informational)
+        shell: pwsh
+        run: |
+          # Install LLVM if available
+          choco install llvm -y --no-progress 2>$null
+          if (Get-Command clang-tidy -ErrorAction SilentlyContinue) {
+            Get-ChildItem -Recurse -Include "*.cpp","*.h" |
+              Where-Object { $_.FullName -notmatch "Generated" } |
+              ForEach-Object {
+                clang-tidy $_.FullName `
+                  --checks="-*,bugprone-*,modernize-*,performance-*" `
+                  -- -std:c++20 2>&1 |
+                  Select-String "warning:|error:" |
+                  Write-Host
+              }
+          } else {
+            Write-Host "clang-tidy not available, skipping"
+          }
+        continue-on-error: true
 
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v3
+      - name: Check for TODO/FIXME/HACK
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Recurse -Include "*.cpp","*.h","*.xaml" |
+            Where-Object { $_.FullName -notmatch "(Generated|obj|bin)" }
 
-    - name: Restore NuGet Packages
-      # Make sure the solution name matches your actual .sln file name
-      run: nuget restore BDFlix.sln 
+          $findings = @()
+          foreach ($f in $files) {
+            $lines = Get-Content $f.FullName
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+              if ($lines[$i] -match "TODO|FIXME|HACK|XXX") {
+                $findings += "$($f.Name):$($i+1): $($lines[$i].Trim())"
+              }
+            }
+          }
 
-    - name: Build Project
-      # Compiles the solution in Release mode for 64-bit architecture
-      # You can add /p:WindowsAppSDKSelfContained=true if you want a self-contained unpackaged app
-      run: msbuild BDFlix.sln /p:Configuration=Release /p:Platform=x64
+          if ($findings.Count -gt 0) {
+            Write-Host "⚠️  Found $($findings.Count) TODO/FIXME/HACK items:"
+            $findings | ForEach-Object { Write-Host "  $_" }
+          } else {
+            Write-Host "✅ No TODO/FIXME/HACK items found"
+          }
+        continue-on-error: true
 
-    - name: Generate Timestamp and Rename Artifact
-      id: prepare_artifact
-      shell: pwsh
-      run: |
-        # Generate the DDMMYYHHMMSS timestamp
-        $timestamp = Get-Date -Format "ddMMyyHHmmss"
-        $targetName = "BDFlix-$timestamp.exe"
-        $tagName = "v$timestamp"
-        
-        # Save variables to GitHub Environment for the next steps
-        echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
-        echo "TARGET_NAME=$targetName" >> $env:GITHUB_ENV
-        
-        # Locate the compiled BDFlix.exe 
-        # (It searches the Release directories recursively in case your output path differs)
-        $exeFile = Get-ChildItem -Path . -Filter "BDFlix.exe" -Recurse | Where-Object { $_.FullName -match "Release" } | Select-Object -First 1
-        
-        if ($exeFile) {
-            Write-Host "Found executable at: $($exeFile.FullName)"
-            $newPath = Join-Path -Path $exeFile.DirectoryName -ChildPath $targetName
-            Rename-Item -Path $exeFile.FullName -NewName $targetName
-            
-            # Save the exact path of the renamed file
-            echo "EXE_PATH=$newPath" >> $env:GITHUB_ENV
-        } else {
-            Write-Error "BDFlix.exe was not found. Check your build configuration."
-            exit 1
-        }
+  # ─────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    runs-on: windows-latest
+    needs: [build, package]
+    # Only run this job if the push was to the main branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Download x64 Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BDFlix-x64-build
+          path: build_output
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ env.TAG_NAME }}
-        name: BDFlix Build ${{ env.TAG_NAME }}
-        files: ${{ env.EXE_PATH }}
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rename Executable
+        shell: pwsh
+        run: |
+          $timestamp = Get-Date -Format "ddMMyyHHmmss"
+          $targetName = "BDFlix-$timestamp.exe"
+          $tagName = "v$timestamp"
+          
+          echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
+          
+          # Find the compiled executable and rename it
+          $exeFile = Get-ChildItem -Path build_output -Filter "BDFlix.exe" -Recurse | Select-Object -First 1
+          if ($exeFile) {
+              $newPath = Join-Path -Path $exeFile.DirectoryName -ChildPath $targetName
+              Rename-Item -Path $exeFile.FullName -NewName $targetName
+              echo "EXE_PATH=$newPath" >> $env:GITHUB_ENV
+              Write-Host "Renamed executable to $targetName"
+          } else {
+              Write-Error "BDFlix.exe not found in artifact."
+              exit 1
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: BDFlix Release ${{ env.TAG_NAME }}
+          files: ${{ env.EXE_PATH }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
