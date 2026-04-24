@@ -1,5 +1,6 @@
 #pragma once
 #include "DownloadsPage.g.h"
+#include "DlItemVM.g.h"
 #include "Models.h"
 #include "DownloadManager.h"
 #include "Helpers.h"
@@ -10,12 +11,11 @@
 namespace winrt::BDFlix::implementation
 {
     // ── Observable VM for one download ──────────────────────────────────────
-    struct DlItemVM :
-        winrt::implements<DlItemVM,
-            winrt::Windows::Foundation::IInspectable>
+    struct DlItemVM : DlItemVMT<DlItemVM>
     {
         std::shared_ptr<::BDFlix::DownloadTask> task;
 
+        DlItemVM() = default;
         explicit DlItemVM(
             std::shared_ptr<::BDFlix::DownloadTask> t)
             : task(std::move(t)) {}

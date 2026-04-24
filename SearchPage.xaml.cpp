@@ -100,9 +100,7 @@ namespace winrt::BDFlix::implementation
             {
                 for (auto& f : batch)
                 {
-                    auto vm = winrt::make<FileResultVM>();
-                    vm.as<FileResultVM>()->data = f; // store data
-                    m_items.Append(vm);
+                    m_items.Append(winrt::make<FileResultVM>(f));
                 }
                 auto n = m_items.Size();
                 ResultCount().Text(winrt::hstring(
@@ -164,9 +162,7 @@ namespace winrt::BDFlix::implementation
         m_items.Clear();
         for (auto& f : m_allResults)
         {
-            auto vm = winrt::make<FileResultVM>();
-            vm.as<FileResultVM>()->data = f;
-            m_items.Append(vm);
+            m_items.Append(winrt::make<FileResultVM>(f));
         }
     }
 
