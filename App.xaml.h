@@ -12,8 +12,3 @@ namespace winrt::BDFlix::implementation
         winrt::Microsoft::UI::Xaml::Window m_window{ nullptr };
     };
 }
-
-namespace winrt::BDFlix::factory_implementation
-{
-    struct App : AppT<App, implementation::App> {};
-}

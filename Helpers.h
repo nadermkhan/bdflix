@@ -47,21 +47,50 @@ namespace BDFlix::Helpers
 
     inline std::wstring UrlDec(const std::wstring& s)
     {
-        std::wstring r;
+        // Percent-encoded URLs encode non-ASCII characters as UTF-8 byte
+        // sequences (e.g. %C3%A9 for 'é'). Decode first into a raw byte
+        // buffer, then convert the buffer from UTF-8 to wide string so
+        // multi-byte sequences are reconstructed correctly.
+        std::string bytes;
+        bytes.reserve(s.size());
         for (size_t i = 0; i < s.size(); i++)
         {
-            if (s[i] == L'%' && i + 2 < s.size())
+            wchar_t c = s[i];
+            if (c == L'%' && i + 2 < s.size())
             {
                 wchar_t hx[3] = { s[i + 1], s[i + 2], 0 };
-                wchar_t* e;
+                wchar_t* e = nullptr;
                 long v = wcstol(hx, &e, 16);
-                if (e == hx + 2) { r += (wchar_t)v; i += 2; }
-                else r += s[i];
+                if (e == hx + 2)
+                {
+                    bytes.push_back(static_cast<char>(static_cast<unsigned char>(v & 0xFF)));
+                    i += 2;
+                    continue;
+                }
             }
-            else if (s[i] == L'+') r += L' ';
-            else r += s[i];
+            if (c == L'+')
+            {
+                bytes.push_back(' ');
+            }
+            else if (c < 0x80)
+            {
+                bytes.push_back(static_cast<char>(c));
+            }
+            else
+            {
+                // Non-ASCII wide char that wasn't percent-encoded; re-encode
+                // as UTF-8 so the final U2W call can decode it consistently.
+                wchar_t buf[2] = { c, 0 };
+                int n = WideCharToMultiByte(CP_UTF8, 0, buf, 1, nullptr, 0, nullptr, nullptr);
+                if (n > 0)
+                {
+                    size_t oldSize = bytes.size();
+                    bytes.resize(oldSize + n);
+                    WideCharToMultiByte(CP_UTF8, 0, buf, 1, &bytes[oldSize], n, nullptr, nullptr);
+                }
+            }
         }
-        return r;
+        return U2W(bytes);
     }
 
     inline std::wstring SanitizeFN(const std::wstring& n)

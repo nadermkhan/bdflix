@@ -1,5 +1,6 @@
 #pragma once
 #include "SearchPage.g.h"
+#include "FileResultVM.g.h"
 #include "Models.h"
 #include "SearchEngine.h"
 #include "DownloadManager.h"
@@ -10,12 +11,12 @@
 namespace winrt::BDFlix::implementation
 {
     // ── Observable view-model for a single file result ──────────────────────
-    struct FileResultVM :
-        winrt::implements<FileResultVM,
-            winrt::Windows::Foundation::IInspectable,
-            winrt::Windows::Foundation::IStringable>
+    struct FileResultVM : FileResultVMT<FileResultVM>
     {
         ::BDFlix::FileResult data;
+
+        FileResultVM() = default;
+        explicit FileResultVM(::BDFlix::FileResult d) : data(std::move(d)) {}
 
         winrt::hstring Name()     const { return winrt::hstring(data.name); }
         winrt::hstring Server()   const { return winrt::hstring(data.server); }
@@ -35,8 +36,6 @@ namespace winrt::BDFlix::implementation
         }
         winrt::Microsoft::UI::Xaml::Media::SolidColorBrush
             TypeColor() const;  // implemented in .cpp
-
-        winrt::hstring ToString() const { return Name(); }
     };
 
     // ── Page ────────────────────────────────────────────────────────────────

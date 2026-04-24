@@ -14,13 +14,19 @@ namespace winrt::BDFlix::implementation
     {
         InitializeComponent();
 
-        // Enable dark title bar
-        auto hwnd = GetWindowFromWindowId(AppWindow().Id());
-        // WinUI3 does this automatically in dark theme,
-        // but we can also set it manually:
+        // Enable dark title bar. Get the native HWND via IWindowNative; the
+        // Microsoft.UI.Interop helper is not on the default include path.
+        HWND hwnd{};
+        if (auto native = this->try_as<::IWindowNative>())
+        {
+            native->get_WindowHandle(&hwnd);
+        }
         BOOL dark = TRUE;
-        DwmSetWindowAttribute(hwnd,
-            DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+        if (hwnd)
+        {
+            DwmSetWindowAttribute(hwnd,
+                DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+        }
 
         AppWindow().Title(L"BDFlix");
         AppWindow().Resize({ 960, 680 });

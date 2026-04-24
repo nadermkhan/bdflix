@@ -49,6 +49,21 @@
                 <Setter Property="CornerRadius" Value="12"/>
                 <Setter Property="Margin" Value="12,2"/>
             </Style>
+
+            <!-- Tab button style (flat, transparent, no border) -->
+            <Style x:Key="TabButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Padding" Value="12,0"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="CornerRadius" Value="0"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

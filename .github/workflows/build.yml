@@ -141,7 +141,11 @@ jobs:
       - name: Compute version from git
         shell: pwsh
         run: |
+          # `git describe` returns 128 when no tags exist, which GitHub's pwsh
+          # wrapper would otherwise treat as a step failure. Swallow stderr
+          # and reset $LASTEXITCODE so falling back to v0.0.0 is non-fatal.
           $tag = git describe --tags --abbrev=0 2>$null
+          $global:LASTEXITCODE = 0
           if (-not $tag) { $tag = "v0.0.0" }
           $version = $tag.TrimStart('v')
           $parts   = $version.Split('.')

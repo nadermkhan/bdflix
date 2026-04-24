@@ -23,4 +23,29 @@ namespace BDFlix
     {
         DownloadsPage();
     }
+
+    // View models surfaced to XAML so `x:DataType` / `x:Bind` can resolve
+    // their properties. Intentionally no IDL constructors: these are built
+    // from C++ using internal ctors that take std::shared_ptr payloads.
+    runtimeclass FileResultVM
+    {
+        String Name{ get; };
+        String Server{ get; };
+        String Folder{ get; };
+        String SizeText{ get; };
+        String ExtLabel{ get; };
+        Microsoft.UI.Xaml.Media.SolidColorBrush TypeColor{ get; };
+    }
+
+    runtimeclass DlItemVM
+    {
+        String FileName{ get; };
+        Double Progress{ get; };
+        Microsoft.UI.Xaml.Visibility ShowProgress{ get; };
+        String StateIcon{ get; };
+        String StatusLine{ get; };
+        Microsoft.UI.Xaml.Media.SolidColorBrush StateColor{ get; };
+        Microsoft.UI.Xaml.Media.SolidColorBrush ProgressColor{ get; };
+        Microsoft.UI.Xaml.Media.SolidColorBrush StatusColor{ get; };
+    }
 }
