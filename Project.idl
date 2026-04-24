@@ -1,0 +1,26 @@
+namespace BDFlix
+{
+    [default_interface]
+    runtimeclass MainWindow : Microsoft.UI.Xaml.Window
+    {
+        MainWindow();
+    }
+
+    [default_interface]
+    runtimeclass AboutPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        AboutPage();
+    }
+
+    [default_interface]
+    runtimeclass SearchPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        SearchPage();
+    }
+
+    [default_interface]
+    runtimeclass DownloadsPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        DownloadsPage();
+    }
+}

@@ -1,5 +1,5 @@
 #pragma once
-#include "MainWindow.xaml.g.h"
+#include "MainWindow.g.h"
 #include "SearchPage.xaml.h"
 #include "DownloadsPage.xaml.h"
 #include "AboutPage.xaml.h"

@@ -1,0 +1,29 @@
+# NuGet restore
+packages/
+*.nupkg
+
+# MSBuild / Visual Studio
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+ARM64/
+Win32/
+Generated Files/
+.vs/
+
+# MSIX / Appx output
+AppPackages/
+BundleArtifacts/
+*.pfx
+*.cer
+
+# Misc
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.ipch
+ipch/

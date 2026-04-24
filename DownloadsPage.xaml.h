@@ -1,5 +1,5 @@
 #pragma once
-#include "DownloadsPage.xaml.g.h"
+#include "DownloadsPage.g.h"
 #include "Models.h"
 #include "DownloadManager.h"
 #include "Helpers.h"
