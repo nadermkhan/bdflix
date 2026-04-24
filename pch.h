@@ -31,7 +31,6 @@
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 #include <winrt/Microsoft.UI.Xaml.Markup.h>
 #include <microsoft.ui.xaml.window.h>
-#include <Microsoft.UI.Interop.h>
 
 // The cppwinrt-generated `.g.h` headers don't implicitly pull WinUI names into
 // the `winrt` namespace the way the XAML compiler's `.xaml.g.h` used to, so
