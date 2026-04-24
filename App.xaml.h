@@ -1,5 +1,5 @@
 #pragma once
-#include "App.g.h"
+#include "App.xaml.g.h"
 
 namespace winrt::BDFlix::implementation
 {
@@ -11,9 +11,4 @@ namespace winrt::BDFlix::implementation
     private:
         winrt::Microsoft::UI::Xaml::Window m_window{ nullptr };
     };
-}
-
-namespace winrt::BDFlix::factory_implementation
-{
-    struct App : AppT<App, implementation::App> {};
 }

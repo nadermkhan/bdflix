@@ -1,12 +1,6 @@
 namespace BDFlix
 {
     [default_interface]
-    runtimeclass App : Microsoft.UI.Xaml.Application
-    {
-        App();
-    }
-
-    [default_interface]
     runtimeclass MainWindow : Microsoft.UI.Xaml.Window
     {
         MainWindow();
