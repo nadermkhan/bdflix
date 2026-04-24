@@ -2,6 +2,13 @@
 #include "App.xaml.h"
 #include "MainWindow.xaml.h"
 
+// cppwinrt emits the App factory (`winrt_make_BDFlix_App`) in App.g.cpp
+// because App is declared in Project.idl. Pull it into this translation
+// unit so module.g.cpp can resolve the factory at link time.
+#if __has_include("App.g.cpp")
+#include "App.g.cpp"
+#endif
+
 namespace winrt::BDFlix::implementation
 {
     App::App()
