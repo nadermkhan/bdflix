@@ -1,5 +1,5 @@
 #pragma once
-#include "SearchPage.xaml.g.h"
+#include "SearchPage.g.h"
 #include "Models.h"
 #include "SearchEngine.h"
 #include "DownloadManager.h"

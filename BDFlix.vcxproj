@@ -32,6 +32,8 @@
     <CppWinRTOptimized>true</CppWinRTOptimized>
     <CppWinRTRootNamespaceAutoMerge>true</CppWinRTRootNamespaceAutoMerge>
     <CppWinRTGenerateWindowsMetadata>true</CppWinRTGenerateWindowsMetadata>
+    <MinimalCoreWin>true</MinimalCoreWin>
+    <TargetName>$(RootNamespace)</TargetName>
     <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
     <VCProjectVersion>17.0</VCProjectVersion>
     <ProjectGuid>{7B1B9B05-8E4A-4E91-9D7F-4D6E6A2A7B12}</ProjectGuid>
@@ -121,34 +123,13 @@
     <Image Include="Assets\StoreLogo.png" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="App.idl">
+    <Midl Include="Project.idl">
       <SubType>Code</SubType>
-      <DependentUpon>App.xaml</DependentUpon>
-    </Midl>
-    <Midl Include="MainWindow.idl">
-      <SubType>Code</SubType>
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-    </Midl>
-    <Midl Include="AboutPage.idl">
-      <SubType>Code</SubType>
-      <DependentUpon>AboutPage.xaml</DependentUpon>
-    </Midl>
-    <Midl Include="SearchPage.idl">
-      <SubType>Code</SubType>
-      <DependentUpon>SearchPage.xaml</DependentUpon>
-    </Midl>
-    <Midl Include="DownloadsPage.idl">
-      <SubType>Code</SubType>
-      <DependentUpon>DownloadsPage.xaml</DependentUpon>
     </Midl>
   </ItemGroup>
   <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <SubType>Designer</SubType>
-    </ApplicationDefinition>
-    <Page Include="MainWindow.xaml">
-      <SubType>Designer</SubType>
-    </Page>
+    <ApplicationDefinition Include="App.xaml" />
+    <Page Include="MainWindow.xaml" />
     <Page Include="AboutPage.xaml">
       <SubType>Designer</SubType>
     </Page>

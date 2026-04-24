@@ -1,5 +1,5 @@
 #pragma once
-#include "AboutPage.xaml.g.h"
+#include "AboutPage.g.h"
 
 namespace winrt::BDFlix::implementation
 {
