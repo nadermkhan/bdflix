@@ -1,5 +1,5 @@
 #pragma once
-#include "App.xaml.g.h"
+#include "App.g.h"
 
 namespace winrt::BDFlix::implementation
 {
