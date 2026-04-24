@@ -9,32 +9,41 @@ namespace BDFlix
         ResultBatchCallback onBatch,
         SearchCompleteCallback onComplete)
     {
-        Cancel(); // cancel any previous
-        m_cancelled = false;
-        m_searching = true;
-        m_done = 0;
-        m_total = (int)g_Servers.size();
+        Cancel(); // mark any previous context cancelled and wait briefly
+
+        auto ctx = std::make_shared<Ctx>();
+        ctx->total = (int)g_Servers.size();
+
         {
-            std::lock_guard<std::mutex> lk(m_resultsMutex);
-            m_allResults.clear();
+            std::lock_guard<std::mutex> lk(m_ctxMutex);
+            m_ctx = ctx;
         }
+        m_searching = true;
 
         auto toks = Helpers::Tokenize(term);
 
         for (auto& srv : g_Servers)
         {
-            std::thread([this, srv, term, toks,
+            std::thread([this, ctx, srv, term, toks,
                 onBatch, onComplete]()
             {
-                SearchServer(srv, term, toks, onBatch, onComplete);
+                SearchServer(ctx, srv, term, toks, onBatch, onComplete);
             }).detach();
         }
     }
 
     void SearchEngine::Cancel()
     {
-        m_cancelled = true;
-        // Wait briefly for threads to notice
+        std::shared_ptr<Ctx> ctx;
+        {
+            std::lock_guard<std::mutex> lk(m_ctxMutex);
+            ctx = m_ctx;
+        }
+        if (ctx) ctx->cancelled = true;
+
+        // Wait briefly for threads to notice cancellation before returning.
+        // Threads that miss this window will still run to completion but will
+        // only mutate their own (now-cancelled) context, never the next one.
         int waited = 0;
         while (m_searching.load() && waited < 500)
         {
@@ -45,20 +54,35 @@ namespace BDFlix
     }
 
     void SearchEngine::SearchServer(
+        std::shared_ptr<Ctx> ctx,
         const ServerInfo& srv,
         const std::wstring& term,
         const std::vector<Helpers::Tok>& toks,
         ResultBatchCallback onBatch,
         SearchCompleteCallback onComplete)
     {
-        if (m_cancelled.load())
+        auto finish = [this, ctx, onComplete]()
         {
-            if (++m_done >= m_total)
+            int done = ++ctx->done;
+            if (done >= ctx->total)
             {
-                m_searching = false;
-                std::lock_guard<std::mutex> lk(m_resultsMutex);
-                onComplete((int)m_allResults.size());
+                // Only the current in-flight context should flip the
+                // engine-level searching flag; stale contexts simply exit.
+                {
+                    std::lock_guard<std::mutex> lk(m_ctxMutex);
+                    if (m_ctx == ctx) m_searching = false;
+                }
+                if (!ctx->cancelled.load())
+                {
+                    std::lock_guard<std::mutex> lk(ctx->resultsMutex);
+                    onComplete((int)ctx->results.size());
+                }
             }
+        };
+
+        if (ctx->cancelled.load())
+        {
+            finish();
             return;
         }
 
@@ -76,14 +100,14 @@ namespace BDFlix
         std::string resp = HttpPost(srv.host, srv.port,
             srv.path, body, ok);
 
-        if (ok && !resp.empty() && !m_cancelled.load())
+        if (ok && !resp.empty() && !ctx->cancelled.load())
         {
             auto items = Helpers::ParseJ(Helpers::U2W(resp));
             std::vector<FileResult> batch;
 
             for (auto& it : items)
             {
-                if (m_cancelled.load()) break;
+                if (ctx->cancelled.load()) break;
                 std::wstring dn = Helpers::UrlDec(
                     Helpers::GetName(it.href));
                 if (!Helpers::IsAllowed(dn) ||
@@ -102,24 +126,18 @@ namespace BDFlix
                 batch.push_back(std::move(f));
             }
 
-            if (!batch.empty() && !m_cancelled.load())
+            if (!batch.empty() && !ctx->cancelled.load())
             {
                 {
-                    std::lock_guard<std::mutex> lk(m_resultsMutex);
-                    m_allResults.insert(m_allResults.end(),
+                    std::lock_guard<std::mutex> lk(ctx->resultsMutex);
+                    ctx->results.insert(ctx->results.end(),
                         batch.begin(), batch.end());
                 }
                 onBatch(std::move(batch));
             }
         }
 
-        int done = ++m_done;
-        if (done >= m_total)
-        {
-            m_searching = false;
-            std::lock_guard<std::mutex> lk(m_resultsMutex);
-            onComplete((int)m_allResults.size());
-        }
+        finish();
     }
 
     std::string SearchEngine::HttpPost(
@@ -134,7 +152,8 @@ namespace BDFlix
 
         HINTERNET hr = WinHttpOpenRequest(hc, L"POST",
             path.c_str(), nullptr, nullptr,
-            WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            (port == 443) ? WINHTTP_FLAG_SECURE : 0);
         if (!hr) { g_ConnPool.Drop(hs, hc); return ""; }
 
         WinHttpAddRequestHeaders(hr,
@@ -171,14 +190,14 @@ namespace BDFlix
             return "";
         }
 
-        DWORD dw = 0, dr = 0;
-        do
+        char buf[8192];
+        DWORD avail = 0, read = 0;
+        while (WinHttpQueryDataAvailable(hr, &avail) && avail)
         {
-            if (!WinHttpQueryDataAvailable(hr, &dw) || !dw) break;
-            std::vector<char> buf(dw + 1, 0);
-            if (WinHttpReadData(hr, buf.data(), dw, &dr))
-                resp.append(buf.data(), dr);
-        } while (dw > 0);
+            DWORD toRead = avail > sizeof(buf) ? (DWORD)sizeof(buf) : avail;
+            if (!WinHttpReadData(hr, buf, toRead, &read) || !read) break;
+            resp.append(buf, read);
+        }
 
         WinHttpCloseHandle(hr);
         g_ConnPool.Put(hs, hc, host, port);

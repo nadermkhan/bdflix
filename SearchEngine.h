@@ -112,6 +112,18 @@ namespace BDFlix
     class SearchEngine
     {
     public:
+        // Per-search context. Each Search() call creates a fresh context so
+        // threads from prior (cancelled) searches can finish without mutating
+        // state belonging to a newer search.
+        struct Ctx
+        {
+            std::atomic<bool> cancelled{ false };
+            std::atomic<int>  done{ 0 };
+            int               total{ 0 };
+            std::mutex        resultsMutex;
+            std::vector<FileResult> results;
+        };
+
         SearchEngine() = default;
         ~SearchEngine() { Cancel(); }
 
@@ -123,7 +135,8 @@ namespace BDFlix
         bool IsSearching() const { return m_searching.load(); }
 
     private:
-        void SearchServer(const ServerInfo& srv,
+        void SearchServer(std::shared_ptr<Ctx> ctx,
+            const ServerInfo& srv,
             const std::wstring& term,
             const std::vector<Helpers::Tok>& toks,
             ResultBatchCallback onBatch,
@@ -133,11 +146,8 @@ namespace BDFlix
             const std::wstring& path,
             const std::string& body, bool& ok);
 
-        std::atomic<bool> m_searching{ false };
-        std::atomic<int>  m_done{ 0 };
-        std::atomic<int>  m_total{ 0 };
-        std::atomic<bool> m_cancelled{ false };
-        std::mutex        m_resultsMutex;
-        std::vector<FileResult> m_allResults;
+        std::atomic<bool>  m_searching{ false };
+        std::mutex         m_ctxMutex;
+        std::shared_ptr<Ctx> m_ctx;
     };
 }

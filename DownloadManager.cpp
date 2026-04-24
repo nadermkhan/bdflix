@@ -156,7 +156,8 @@ namespace BDFlix
 
         HINTERNET hr = WinHttpOpenRequest(hc, L"HEAD",
             path.c_str(), nullptr, nullptr,
-            WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            (p == 443) ? WINHTTP_FLAG_SECURE : 0);
         if (!hr) { g_ConnPool.Drop(hs, hc); return -1; }
 
         if (!WinHttpSendRequest(hr, nullptr, 0, nullptr, 0, 0, 0) ||
@@ -187,7 +188,8 @@ namespace BDFlix
 
         HINTERNET hr = WinHttpOpenRequest(hc, L"GET",
             path.c_str(), nullptr, nullptr,
-            WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            (p == 443) ? WINHTTP_FLAG_SECURE : 0);
         if (!hr) { g_ConnPool.Drop(hs, hc); return false; }
 
         WinHttpAddRequestHeaders(hr, L"Range: bytes=0-0",
@@ -325,7 +327,8 @@ namespace BDFlix
 
         HINTERNET hr = WinHttpOpenRequest(hc, L"GET",
             t->path.c_str(), nullptr, nullptr,
-            WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            (t->port == 443) ? WINHTTP_FLAG_SECURE : 0);
         if (!hr)
         {
             WinHttpCloseHandle(hc); WinHttpCloseHandle(hs);
@@ -414,7 +417,8 @@ namespace BDFlix
 
         HINTERNET hr = WinHttpOpenRequest(hc, L"GET",
             t->path.c_str(), nullptr, nullptr,
-            WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            (t->port == 443) ? WINHTTP_FLAG_SECURE : 0);
         if (!hr)
         {
             WinHttpCloseHandle(hc); WinHttpCloseHandle(hs);
